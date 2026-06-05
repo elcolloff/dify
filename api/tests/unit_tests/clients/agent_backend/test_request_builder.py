@@ -35,11 +35,13 @@ def _run_input() -> AgentBackendWorkflowNodeRunInput:
         execution_context=DifyExecutionContextLayerConfig(
             tenant_id="tenant-1",
             user_id="user-1",
+            user_from="account",
             workflow_id="workflow-1",
             workflow_run_id="workflow-run-1",
             node_id="node-1",
             node_execution_id="node-execution-1",
-            invoke_from="workflow_run",
+            agent_mode="workflow_run",
+            invoke_from="debugger",
         ),
         idempotency_key="workflow-run-1:node-execution-1",
         agent_soul_prompt="You are a careful reviewer.",
@@ -94,6 +96,9 @@ def test_request_builder_sets_model_and_output_layer_contract_ids():
 
     assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID].type == DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID
     assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID].config.user_id == "user-1"
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID].config.user_from == "account"
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID].config.agent_mode == "workflow_run"
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID].config.invoke_from == "debugger"
     assert layers[DIFY_AGENT_MODEL_LAYER_ID].type == DIFY_PLUGIN_LLM_LAYER_TYPE_ID
     assert layers[DIFY_AGENT_MODEL_LAYER_ID].config.plugin_id == "langgenius/openai"
     assert layers[DIFY_AGENT_MODEL_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
@@ -117,7 +122,12 @@ def test_request_builder_rejects_blank_prompts():
                 model_provider="openai",
                 model="gpt-test",
             ),
-            execution_context=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+            execution_context=DifyExecutionContextLayerConfig(
+                tenant_id="tenant-1",
+                user_from="account",
+                agent_mode="workflow_run",
+                invoke_from="debugger",
+            ),
             workflow_node_job_prompt=" ",
             user_prompt="hello",
         )

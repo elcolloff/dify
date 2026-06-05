@@ -134,7 +134,12 @@ def _request(
         RunLayerSpec(
             name=execution_context_layer_name,
             type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-            config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+            config=DifyExecutionContextLayerConfig(
+                tenant_id="tenant-1",
+                user_from="account",
+                agent_mode="workflow_run",
+                invoke_from="service-api",
+            ),
         ),
         RunLayerSpec(
             name=llm_layer_name,
@@ -390,7 +395,12 @@ def test_runner_passes_dynamic_dify_plugin_tools_to_agent(monkeypatch: pytest.Mo
                 RunLayerSpec(
                     name="execution_context",
                     type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+                    config=DifyExecutionContextLayerConfig(
+                        tenant_id="tenant-1",
+                        user_from="account",
+                        agent_mode="workflow_run",
+                        invoke_from="service-api",
+                    ),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
@@ -479,7 +489,12 @@ def test_runner_rejects_duplicate_tool_names_across_dynamic_tool_layers(
                 RunLayerSpec(
                     name="execution_context",
                     type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+                    config=DifyExecutionContextLayerConfig(
+                        tenant_id="tenant-1",
+                        user_from="account",
+                        agent_mode="workflow_run",
+                        invoke_from="service-api",
+                    ),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
@@ -598,7 +613,12 @@ def test_runner_rejects_duplicate_tool_names_between_static_and_dynamic_tools(
                 RunLayerSpec(
                     name="execution_context",
                     type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+                    config=DifyExecutionContextLayerConfig(
+                        tenant_id="tenant-1",
+                        user_from="account",
+                        agent_mode="workflow_run",
+                        invoke_from="service-api",
+                    ),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
@@ -707,7 +727,12 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
                 RunLayerSpec(
                     name="execution_context",
                     type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+                    config=DifyExecutionContextLayerConfig(
+                        tenant_id="tenant-1",
+                        user_from="account",
+                        agent_mode="workflow_run",
+                        invoke_from="service-api",
+                    ),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
@@ -1212,7 +1237,12 @@ def test_runner_rejects_misnamed_output_layer_before_model_resolution(monkeypatc
                 RunLayerSpec(
                     name="execution_context",
                     type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+                    config=DifyExecutionContextLayerConfig(
+                        tenant_id="tenant-1",
+                        user_from="account",
+                        agent_mode="workflow_run",
+                        invoke_from="service-api",
+                    ),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
@@ -1281,7 +1311,12 @@ def test_runner_rejects_multiple_output_layers_before_model_resolution(monkeypat
                 RunLayerSpec(
                     name="execution_context",
                     type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+                    config=DifyExecutionContextLayerConfig(
+                        tenant_id="tenant-1",
+                        user_from="account",
+                        agent_mode="workflow_run",
+                        invoke_from="service-api",
+                    ),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
@@ -1372,7 +1407,12 @@ def test_runner_rejects_reserved_output_name_with_wrong_layer_type_before_model_
                 RunLayerSpec(
                     name="execution_context",
                     type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+                    config=DifyExecutionContextLayerConfig(
+                        tenant_id="tenant-1",
+                        user_from="account",
+                        agent_mode="workflow_run",
+                        invoke_from="service-api",
+                    ),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
@@ -1615,7 +1655,12 @@ def test_runner_treats_missing_shell_entrypoint_as_validation_error() -> None:
                 RunLayerSpec(
                     name="execution_context",
                     type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+                    config=DifyExecutionContextLayerConfig(
+                        tenant_id="tenant-1",
+                        user_from="account",
+                        agent_mode="workflow_run",
+                        invoke_from="service-api",
+                    ),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
@@ -1662,7 +1707,12 @@ def test_runner_treats_invalid_shell_snapshot_offsets_as_validation_error() -> N
                 RunLayerSpec(
                     name="execution_context",
                     type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
-                    config=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+                    config=DifyExecutionContextLayerConfig(
+                        tenant_id="tenant-1",
+                        user_from="account",
+                        agent_mode="workflow_run",
+                        invoke_from="service-api",
+                    ),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
