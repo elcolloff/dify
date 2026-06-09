@@ -3,26 +3,56 @@ from __future__ import annotations
 import uuid
 
 from flask import request
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound, Unauthorized
+from werkzeug.exceptions import Conflict, Forbidden, InternalServerError, NotFound, Unauthorized, UnprocessableEntity
 
 from controllers.openapi.auth.data import AuthData
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from models.account import TenantStatus
 from services.account_service import AccountService, TenantService
+from models import App
 from services.app_service import AppService
 from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
+
+
+def _ambiguous_app_error(app_id: str, matches: list[App]) -> Conflict:
+    lines = [f"app name {app_id!r} is ambiguous — re-run with a UUID:\n\n"]
+    lines.append(f"  {'ID':<36}  {'MODE':<12}  NAME\n")
+    for m in matches:
+        lines.append(f"  {str(m.id):<36}  {str(m.mode.value):<12}  {m.name}\n")
+    return Conflict("".join(lines))
 
 
 def load_app(data: AuthData) -> None:
     if data.app is not None:
         return
     app_id = data.path_params["app_id"]
-    app = AppService.get_app_by_id(db.session, app_id)
-    if not app or app.status != "normal":
-        raise NotFound("app not found")
-    data.app = app
+    try:
+        uuid.UUID(app_id)
+        is_uuid = True
+    except ValueError:
+        is_uuid = False
+
+    if is_uuid:
+        app = AppService.get_app_by_id(db.session, app_id)
+        if not app or app.status != "normal":
+            raise NotFound("app not found")
+        data.app = app
+    else:
+        workspace_id = request.args.get("workspace_id")
+        if not workspace_id:
+            raise UnprocessableEntity("workspace_id required for name-based app lookup")
+        try:
+            uuid.UUID(workspace_id)
+        except ValueError:
+            raise UnprocessableEntity("workspace_id must be a valid UUID")
+        matches = AppService.find_visible_apps_by_name(db.session, name=app_id, tenant_id=workspace_id)
+        if not matches:
+            raise NotFound("app not found")
+        if len(matches) > 1:
+            raise _ambiguous_app_error(app_id, matches)
+        data.app = matches[0]
 
 
 def load_tenant(data: AuthData) -> None:

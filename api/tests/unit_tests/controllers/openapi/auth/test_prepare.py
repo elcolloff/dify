@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
+from werkzeug.exceptions import Conflict, Forbidden, InternalServerError, NotFound, Unauthorized, UnprocessableEntity
 
 from controllers.openapi.auth.data import AuthData, ExternalIdentity
 from controllers.openapi.auth.prepare import (
@@ -32,18 +32,21 @@ def _make_auth_data(**kwargs) -> AuthData:
     return data
 
 
+_UUID_APP_ID = str(uuid.uuid4())
+
+
 def test_load_app_writes_app_to_data():
     app = MagicMock()
     app.status = "normal"
     app.enable_api = True
-    data = _make_auth_data(path_params={"app_id": "abc"})
+    data = _make_auth_data(path_params={"app_id": _UUID_APP_ID})
     with patch("controllers.openapi.auth.prepare.AppService.get_app_by_id", return_value=app):
         load_app(data)
     assert data.app is app
 
 
 def test_load_app_raises_not_found_when_missing():
-    data = _make_auth_data(path_params={"app_id": "missing"})
+    data = _make_auth_data(path_params={"app_id": _UUID_APP_ID})
     with patch("controllers.openapi.auth.prepare.AppService.get_app_by_id", return_value=None):
         with pytest.raises(NotFound):
             load_app(data)
@@ -52,7 +55,7 @@ def test_load_app_raises_not_found_when_missing():
 def test_load_app_raises_not_found_when_not_normal():
     app = MagicMock()
     app.status = "archived"
-    data = _make_auth_data(path_params={"app_id": "abc"})
+    data = _make_auth_data(path_params={"app_id": _UUID_APP_ID})
     with patch("controllers.openapi.auth.prepare.AppService.get_app_by_id", return_value=app):
         with pytest.raises(NotFound):
             load_app(data)
@@ -62,10 +65,58 @@ def test_load_app_stashes_app_even_when_api_disabled():
     app = MagicMock()
     app.status = "normal"
     app.enable_api = False
-    data = _make_auth_data(path_params={"app_id": "abc"})
+    data = _make_auth_data(path_params={"app_id": _UUID_APP_ID})
     with patch("controllers.openapi.auth.prepare.AppService.get_app_by_id", return_value=app):
         load_app(data)
     assert data.app is app
+
+
+def test_load_app_name_based_sets_app(flask_app):
+    app = MagicMock()
+    app.status = "normal"
+    wid = str(uuid.uuid4())
+    data = _make_auth_data(path_params={"app_id": "my-app"})
+    with flask_app.test_request_context(f"/test?workspace_id={wid}"):
+        with patch("controllers.openapi.auth.prepare.AppService.find_visible_apps_by_name", return_value=[app]):
+            load_app(data)
+    assert data.app is app
+
+
+def test_load_app_name_based_raises_not_found_when_missing(flask_app):
+    wid = str(uuid.uuid4())
+    data = _make_auth_data(path_params={"app_id": "my-app"})
+    with flask_app.test_request_context(f"/test?workspace_id={wid}"):
+        with patch("controllers.openapi.auth.prepare.AppService.find_visible_apps_by_name", return_value=[]):
+            with pytest.raises(NotFound):
+                load_app(data)
+
+
+def test_load_app_name_based_raises_conflict_when_ambiguous(flask_app):
+    m1, m2 = MagicMock(), MagicMock()
+    for m in (m1, m2):
+        m.id = uuid.uuid4()
+        m.mode.value = "chat"
+        m.name = "my-app"
+    wid = str(uuid.uuid4())
+    data = _make_auth_data(path_params={"app_id": "my-app"})
+    with flask_app.test_request_context(f"/test?workspace_id={wid}"):
+        with patch("controllers.openapi.auth.prepare.AppService.find_visible_apps_by_name", return_value=[m1, m2]):
+            with pytest.raises(Conflict):
+                load_app(data)
+
+
+def test_load_app_name_based_raises_422_when_no_workspace_id(flask_app):
+    data = _make_auth_data(path_params={"app_id": "my-app"})
+    with flask_app.test_request_context("/test"):
+        with pytest.raises(UnprocessableEntity):
+            load_app(data)
+
+
+def test_load_app_name_based_raises_422_when_workspace_id_not_uuid(flask_app):
+    data = _make_auth_data(path_params={"app_id": "my-app"})
+    with flask_app.test_request_context("/test?workspace_id=not-a-uuid"):
+        with pytest.raises(UnprocessableEntity):
+            load_app(data)
 
 
 def test_load_app_skips_when_already_set():
@@ -116,8 +167,6 @@ def test_load_tenant_raises_forbidden_when_missing():
 
 
 def test_load_tenant_raises_500_when_app_not_loaded():
-    from werkzeug.exceptions import InternalServerError
-
     data = _make_auth_data()
     with pytest.raises(InternalServerError):
         load_tenant(data)

@@ -25,6 +25,7 @@ from controllers.openapi._models import (
 )
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
+from controllers.openapi.auth.prepare import _ambiguous_app_error
 from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from extensions.ext_database import db
@@ -33,9 +34,6 @@ from models import App
 from services.account_service import TenantService
 from services.app_service import AppListParams, AppService
 from services.tag_service import TagService
-
-_ALLOWED_DESCRIBE_FIELDS: frozenset[str] = frozenset({"info", "parameters", "input_schema"})
-
 
 _EMPTY_PARAMETERS: dict[str, Any] = {
     "opening_statement": None,
@@ -47,18 +45,21 @@ _EMPTY_PARAMETERS: dict[str, Any] = {
 
 
 class AppReadResource(Resource):
-    """Base for per-app read endpoints; subclasses call `_load()` for membership/exists checks."""
+    """Base for per-app read endpoints.
+
+    `_load` provides a direct DB fallback for subclasses that need it.
+    Prefer reading `auth_data.app` (set by the auth pipeline) over calling
+    `_load` directly — the pipeline handles both UUID and name-based lookups.
+    """
 
     def _load(self, app_id: str, workspace_id: str | None = None) -> App:
         try:
             parsed_uuid = _uuid.UUID(app_id)
             is_uuid = True
         except ValueError:
-            parsed_uuid = None
             is_uuid = False
 
         if is_uuid:
-            # ``str(parsed_uuid)`` normalises to the canonical dashed form.
             app = AppService.get_visible_app_by_id(db.session, str(parsed_uuid))
             if app is None:
                 raise NotFound("app not found")
@@ -69,13 +70,8 @@ class AppReadResource(Resource):
             if len(matches) == 0:
                 raise NotFound("app not found")
             if len(matches) > 1:
-                lines = [f"app name {app_id!r} is ambiguous — re-run with a UUID:\n\n"]
-                lines.append(f"  {'ID':<36}  {'MODE':<12}  NAME\n")
-                for m in matches:
-                    lines.append(f"  {str(m.id):<36}  {str(m.mode.value):<12}  {m.name}\n")
-                raise Conflict("".join(lines))
+                raise _ambiguous_app_error(app_id, matches)
             app = matches[0]
-
         return app
 
 
@@ -97,7 +93,7 @@ class AppDescribeApi(AppReadResource):
         except ValidationError as exc:
             raise UnprocessableEntity(exc.json())
 
-        app = self._load(app_id, workspace_id=query.workspace_id)
+        app = auth_data.app if auth_data.app is not None else self._load(app_id, workspace_id=query.workspace_id)
 
         requested = query.fields
         want_info = requested is None or "info" in requested
