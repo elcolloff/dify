@@ -8,7 +8,7 @@ from typing import Any, cast
 from flask import request
 from flask_restx import Resource
 from pydantic import ValidationError
-from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
+from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from controllers.common.fields import Parameters
 from controllers.common.schema import query_params_from_model

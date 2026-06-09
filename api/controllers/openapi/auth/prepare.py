@@ -8,9 +8,9 @@ from werkzeug.exceptions import Conflict, Forbidden, InternalServerError, NotFou
 from controllers.openapi.auth.data import AuthData
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
+from models import App
 from models.account import TenantStatus
 from services.account_service import AccountService, TenantService
-from models import App
 from services.app_service import AppService
 from services.end_user_service import EndUserService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
