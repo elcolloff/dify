@@ -1,19 +1,20 @@
-import type { Key, Store } from './store'
+import type { TokenStore } from './token-store'
 import { describe, expect, it, vi } from 'vitest'
 import { getTokenStore } from './manager'
 
-function memStore(label: string): Store & { _label: string } {
-  const map = new Map<string, unknown>()
+function memStore(label: string): TokenStore & { _label: string } {
+  const map = new Map<string, string>()
+  const k = (h: string, e: string): string => `${h} ${e}`
   return {
     _label: label,
-    get<T>(key: Key<T>): T {
-      return (map.get(key.key) as T | undefined) ?? key.default
+    read(host: string, email: string): string {
+      return map.get(k(host, email)) ?? ''
     },
-    set<T>(key: Key<T>, value: T): void {
-      map.set(key.key, value)
+    write(host: string, email: string, bearer: string): void {
+      map.set(k(host, email), bearer)
     },
-    unset<T>(key: Key<T>): void {
-      map.delete(key.key)
+    remove(host: string, email: string): void {
+      map.delete(k(host, email))
     },
   }
 }
@@ -32,11 +33,9 @@ describe('getTokenStore', () => {
   it('falls back to file when keyring set throws', () => {
     const k = memStore('keyring')
     const f = memStore('file')
-    k.set = vi.fn(
-      () => {
-        throw new Error('locked')
-      },
-    )
+    k.write = vi.fn(() => {
+      throw new Error('locked')
+    })
     const result = getTokenStore({
       factory: { keyring: () => k, file: () => f },
     })
@@ -47,7 +46,7 @@ describe('getTokenStore', () => {
   it('falls back to file when probe round-trip mismatches', () => {
     const k = memStore('keyring')
     const f = memStore('file')
-    k.get = vi.fn(() => 'something-else') as Store['get']
+    k.read = vi.fn(() => 'something-else') as TokenStore['read']
     const result = getTokenStore({
       factory: { keyring: () => k, file: () => f },
     })
@@ -73,6 +72,6 @@ describe('getTokenStore', () => {
     getTokenStore({
       factory: { keyring: () => k, file: () => f },
     })
-    expect(k.get({ key: '__difyctl_probe__', default: '' })).toBe('')
+    expect(k.read('__difyctl_probe__', '__difyctl_probe__')).toBe('')
   })
 })

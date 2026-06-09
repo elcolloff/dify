@@ -13,15 +13,9 @@ export function resolveWorkspaceId(inputs: WorkspaceResolveInputs): string {
     return inputs.flag
   if (truthy(inputs.env))
     return inputs.env
-  const ctx = inputs.active?.ctx
-  if (ctx !== undefined) {
-    if (truthy(ctx.workspace?.id))
-      return ctx.workspace.id
-    if (ctx.available_workspaces !== undefined && ctx.available_workspaces.length > 0
-      && truthy(ctx.available_workspaces[0]?.id)) {
-      return ctx.available_workspaces[0].id
-    }
-  }
+  const wsId = inputs.active?.ctx.workspace?.id
+  if (truthy(wsId))
+    return wsId
   throw new BaseError({
     code: ErrorCode.UsageMissingArg,
     message: 'no workspace selected',

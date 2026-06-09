@@ -1,7 +1,9 @@
-import type { Key, StorageMode, Store } from './store'
+import type { StorageMode, Store } from './store'
+import type { TokenStore } from './token-store'
 import { join } from 'node:path'
 import { resolveCacheDir, resolveConfigDir } from './dir'
-import { KeyringBasedStore, YamlStore } from './store'
+import { YamlStore } from './store'
+import { FileTokenStore, KeychainTokenStore } from './token-store'
 
 export const CACHE_APP_INFO = 'app-info'
 export const CACHE_NUDGE = 'nudge'
@@ -31,13 +33,14 @@ export function getHostStore(): YamlStore {
   return getStore(join(resolveConfigDir(), HOSTS_FILE))
 }
 
-const PROBE_KEY: Key<string> = { key: '__difyctl_probe__', default: '' }
+const PROBE_HOST = '__difyctl_probe__'
+const PROBE_EMAIL = '__difyctl_probe__'
 const PROBE_VALUE = 'probe-v1'
 
 export type GetTokenStoreOptions = {
   readonly factory?: {
-    readonly keyring?: () => Store
-    readonly file?: () => Store
+    readonly keyring?: () => TokenStore
+    readonly file?: () => TokenStore
   }
 }
 
@@ -45,19 +48,19 @@ export type GetTokenStoreOptions = {
  * Single entry point for the credential store. Probes the OS keyring; if it
  * round-trips a value, returns the keychain-backed store. Otherwise falls
  * back to the YAML file at `<configDir>/tokens.yml`. Both implementations
- * satisfy the `Store` interface, so callers interact uniformly.
+ * satisfy the `TokenStore` interface, so callers interact uniformly.
  *
  * Business logic should always obtain the token store through this factory
  * rather than constructing one directly.
  */
-export function getTokenStore(opts: GetTokenStoreOptions = {}): { store: Store, mode: StorageMode } {
-  const fileFactory = opts.factory?.file ?? (() => getStore(join(resolveConfigDir(), TOKENS_FILE)))
-  const keyringFactory = opts.factory?.keyring ?? (() => new KeyringBasedStore(KEYRING_SERVICE))
+export function getTokenStore(opts: GetTokenStoreOptions = {}): { store: TokenStore, mode: StorageMode } {
+  const fileFactory = opts.factory?.file ?? (() => new FileTokenStore(join(resolveConfigDir(), TOKENS_FILE)))
+  const keyringFactory = opts.factory?.keyring ?? (() => new KeychainTokenStore(KEYRING_SERVICE))
   try {
     const k = keyringFactory()
-    k.set(PROBE_KEY, PROBE_VALUE)
-    const got = k.get(PROBE_KEY)
-    k.unset(PROBE_KEY)
+    k.write(PROBE_HOST, PROBE_EMAIL, PROBE_VALUE)
+    const got = k.read(PROBE_HOST, PROBE_EMAIL)
+    k.remove(PROBE_HOST, PROBE_EMAIL)
     if (got !== PROBE_VALUE)
       throw new Error('keyring round-trip mismatch')
     return { store: k, mode: 'keychain' }
@@ -65,13 +68,4 @@ export function getTokenStore(opts: GetTokenStoreOptions = {}): { store: Store, 
   catch {
     return { store: fileFactory(), mode: 'file' }
   }
-}
-
-/**
- * Maps an auth identity (host + accountId) to a `Store` key. All token store
- * reads/writes in business logic go through this helper so the on-disk /
- * keyring layout stays consistent.
- */
-export function tokenKey(host: string, accountId: string): Key<string> {
-  return { key: `tokens.${host}.${accountId}`, default: '' }
 }

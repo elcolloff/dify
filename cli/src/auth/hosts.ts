@@ -1,8 +1,8 @@
-import type { Store } from '@/store/store'
+import type { TokenStore } from '@/store/token-store'
 import { z } from 'zod'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
-import { getHostStore, tokenKey } from '@/store/manager'
+import { getHostStore } from '@/store/manager'
 
 const StorageModeSchema = z.enum(['keychain', 'file'])
 export type StorageMode = z.infer<typeof StorageModeSchema>
@@ -30,7 +30,6 @@ export type ExternalSubject = z.infer<typeof ExternalSubjectSchema>
 export const AccountContextSchema = z.object({
   account: AccountSchema,
   workspace: WorkspaceSchema.optional(),
-  available_workspaces: z.array(WorkspaceSchema).optional(),
   token_id: z.string().optional(),
   token_expires_at: z.string().optional(),
   external_subject: ExternalSubjectSchema.optional(),
@@ -163,9 +162,9 @@ export class Registry {
 
   // Teardown for "this credential is gone": drop the token, drop the context
   // (unsets pointers when active), persist. Logout + self-revoke share it.
-  forget(active: ActiveContext, store: Store): void {
+  forget(active: ActiveContext, store: TokenStore): void {
     try {
-      store.unset(tokenKey(active.host, active.email))
+      store.remove(active.host, active.email)
     }
     catch { /* best-effort */ }
     this.remove(active.host, active.email)

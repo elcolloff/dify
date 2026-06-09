@@ -11,7 +11,6 @@ function active(): ActiveContext {
     ctx: {
       account: { id: 'acct-1', email: 'me@example.com', name: 'Me' },
       workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-      available_workspaces: [{ id: 'ws-1', name: 'Default', role: 'owner' }],
     },
   }
 }
